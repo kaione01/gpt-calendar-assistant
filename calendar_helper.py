@@ -1,5 +1,3 @@
-import datetime
-import json
 import requests
 import os
 
@@ -39,6 +37,6 @@ def create_event(summary, start_time, end_time):
     )
 
     if response.status_code in [200, 201]:
-        print("✅ 行程建立成功")
+        return response.json()
     else:
-        print("❌ 建立失敗：", response.text)
+        return {"error": response.text}
