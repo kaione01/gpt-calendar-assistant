@@ -1,24 +1,22 @@
-from flask import Flask, request, jsonify
-from calendar_helper import create_event
+from calendar_helper import create_event, get_calendar_service
+from input_parser import parse_event_data, get_user_input
 
-app = Flask(__name__)
 
-@app.route("/")
-def home():
-    return "✅ GPT Calendar Assistant 正常運作中"
+def main():
+    service = get_calendar_service()
+    user_input = get_user_input()  # 從使用者取得指令
 
-@app.route("/add-event", methods=["POST"])
-def add_event():
-    data = request.get_json()
-    title = data.get("title")
-    start = data.get("start")
-    end = data.get("end")
+    if "新增活動" in user_input or "建立事件" in user_input:
+        event_data = parse_event_data(user_input)
+        if event_data:
+            event = create_event(service, event_data)
+            if event:
+                print("已建立活動：", event.get("summary"))
+        else:
+            print("無法解析活動內容，請重新輸入。")
+    else:
+        print("未偵測到新增活動的需求。")
 
-    if not title or not start or not end:
-        return jsonify({"error": "缺少參數"}), 400
 
-    result = create_event(title, start, end)
-    return jsonify({"status": "success", "event": result})
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+if __name__ == '__main__':
+    main()
