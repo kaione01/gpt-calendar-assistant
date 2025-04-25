@@ -1,42 +1,34 @@
-import requests
-import os
+from datetime import datetime, timedelta
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
 
-client_id = os.getenv("CLIENT_ID")
-client_secret = os.getenv("CLIENT_SECRET")
-refresh_token = os.getenv("REFRESH_TOKEN")
 
-def get_access_token():
-    response = requests.post(
-        "https://oauth2.googleapis.com/token",
-        data={
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "refresh_token": refresh_token,
-            "grant_type": "refresh_token",
-        },
-    )
-    return response.json().get("access_token")
+def get_calendar_service():
+    creds = Credentials.from_authorized_user_file('token.json', ['https://www.googleapis.com/auth/calendar'])
+    service = build('calendar', 'v3', credentials=creds)
+    return service
 
-def create_event(summary, start_time, end_time):
-    access_token = get_access_token()
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json",
-    }
 
-    event = {
-        "summary": summary,
-        "start": {"dateTime": start_time, "timeZone": "Asia/Taipei"},
-        "end": {"dateTime": end_time, "timeZone": "Asia/Taipei"},
-    }
+def event_exists(service, calendar_id, summary, start_time):
+    events_result = service.events().list(
+        calendarId=calendar_id,
+        timeMin=start_time,
+        maxResults=10,
+        singleEvents=True,
+        orderBy='startTime'
+    ).execute()
+    events = events_result.get('items', [])
 
-    response = requests.post(
-        "https://www.googleapis.com/calendar/v3/calendars/primary/events",
-        headers=headers,
-        json=event,
-    )
+    for event in events:
+        if event['summary'] == summary:
+            return True
+    return False
 
-    if response.status_code in [200, 201]:
-        return response.json()
-    else:
-        return {"error": response.text}
+
+def create_event(service, event_data):
+    if event_exists(service, 'primary', event_data['summary'], event_data['start']['dateTime']):
+        print("相同的事件已存在，略過建立。")
+        return None
+
+    event = service.events().insert(calendarId='primary', body=event_data).execute()
+    return event
